@@ -25,29 +25,14 @@ export default function HomeScreen() {
     const fetchItems = async () => {
       try {
         const data = await getAllLostItems();
-        console.log("Fetched approved items:", data); // Debug output
+        console.log("Fetched approved items:", data);
         setItems(data);
       } catch (error) {
-        console.error("Error in fetchItems:", error); // Log any errors
+        console.error("Error in fetchItems:", error);
       }
     };
     fetchItems();
   }, []);
-
-  /*useFocusEffect(
-    useCallback(() => {
-      const fetchItems = async () => {
-        try {
-          const data = await getAllLostItems();
-          console.log("Refreshed approved items:", data);
-          setItems(data);
-        } catch (error) {
-          console.error("Error in fetchItems on focus:", error);
-        }
-      };
-      fetchItems();
-    }, [])
-  );*/
 
   const toggleTheme = () => {
     setTheme((prev) => (prev === "dark" ? "light" : "dark"));
@@ -102,6 +87,12 @@ export default function HomeScreen() {
         >
           <Text style={styles.cardText}>Auction</Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.card}
+          onPress={() => router.replace("/screens/FindItemScreen")}
+        >
+          <Text style={styles.cardText}>Find Item</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.scrollArea}>
@@ -152,7 +143,7 @@ const getStyles = (isDark) =>
     },
     card: {
       backgroundColor: isDark ? "#1E293B" : "#E0E7FF",
-      width: "48%",
+      width: "48%", // Adjusted to fit more cards
       padding: 20,
       marginVertical: 8,
       borderRadius: 12,

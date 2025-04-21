@@ -8,8 +8,6 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 
-const router = useRouter();
-// Sample data – in real app, fetch from Firebase
 const dummyClaimedItems = [
   {
     id: "1",
@@ -32,6 +30,7 @@ const dummyClaimedItems = [
 ];
 
 const ClaimedItemsScreen = () => {
+  const router = useRouter();
   const [claimedItems, setClaimedItems] = useState([]);
 
   useEffect(() => {
@@ -42,13 +41,19 @@ const ClaimedItemsScreen = () => {
   const renderItem = ({ item }) => (
     <View style={styles.card}>
       <Text style={styles.itemName}>{item.itemName}</Text>
-      <Text>
-        Claimed By: {item.claimedBy} ({item.claimedByEmail})
-      </Text>
-      <Text>
-        Posted By: {item.postedBy} ({item.postedByEmail})
-      </Text>
-      <Text>Claim Date: {item.claimDate}</Text>
+      <View style={styles.section}>
+        <Text style={styles.label}>Claimed By:</Text>
+        <Text style={styles.value}>
+          {item.claimedBy} ({item.claimedByEmail})
+        </Text>
+      </View>
+      <View style={styles.section}>
+        <Text style={styles.label}>Posted By:</Text>
+        <Text style={styles.value}>
+          {item.postedBy} ({item.postedByEmail})
+        </Text>
+      </View>
+      <Text style={styles.date}>Claim Date: {item.claimDate}</Text>
     </View>
   );
 
@@ -60,13 +65,19 @@ const ClaimedItemsScreen = () => {
       >
         <Text style={styles.backButtonText}>←</Text>
       </TouchableOpacity>
+
       <Text style={styles.title}>Claimed Items</Text>
-      <FlatList
-        data={claimedItems}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={{ paddingBottom: 20 }}
-      />
+
+      {claimedItems.length === 0 ? (
+        <Text style={styles.emptyText}>No items have been claimed yet.</Text>
+      ) : (
+        <FlatList
+          data={claimedItems}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          contentContainerStyle={{ paddingBottom: 20 }}
+        />
+      )}
     </View>
   );
 };
@@ -75,13 +86,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f0f4f7",
-    paddingTop: 40,
+    paddingTop: 60,
     paddingHorizontal: 15,
   },
   title: {
     fontSize: 22,
     fontWeight: "bold",
     marginBottom: 15,
+    textAlign: "center",
   },
   card: {
     backgroundColor: "#fff",
@@ -98,14 +110,31 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
     marginBottom: 8,
+    color: "#2c3e50",
+  },
+  section: {
+    marginBottom: 6,
+  },
+  label: {
+    fontWeight: "bold",
+    color: "#555",
+  },
+  value: {
+    marginLeft: 5,
+    color: "#333",
+  },
+  date: {
+    marginTop: 6,
+    fontStyle: "italic",
+    color: "#777",
   },
   backButton: {
     position: "absolute",
-    top: 40,
-    left: 20,
+    top: 20,
+    left: 15,
     paddingVertical: 6,
     paddingHorizontal: 12,
-    backgroundColor: "#ddd",
+    backgroundColor: "#ccc",
     borderRadius: 8,
     zIndex: 1,
   },
@@ -113,6 +142,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     color: "#333",
+  },
+  emptyText: {
+    textAlign: "center",
+    fontSize: 16,
+    color: "#888",
+    marginTop: 40,
   },
 });
 

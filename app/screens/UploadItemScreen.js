@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -13,16 +13,29 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db, auth } from "../firebase/firebaseService";
-import { useRouter } from "expo-router"; // Use hook instead of direct import
-import { Ionicons } from "@expo/vector-icons"; // For back button icon
+import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import DatePicker from "react-native-date-picker"; // For date selection
 
 export default function UploadItemScreen() {
-  const router = useRouter(); // Use hook for navigation
+  const router = useRouter();
   const [itemName, setItemName] = useState("");
   const [location, setLocation] = useState("");
   const [category, setCategory] = useState("");
+  const [brandName, setBrandName] = useState("");
+  const [color, setColor] = useState("");
+  const [dateFound, setDateFound] = useState(new Date()); // Default to today
   const [photoBase64, setPhotoBase64] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false); // For AI analysis
+  const [datePickerOpen, setDatePickerOpen] = useState(false); // Control date picker visibility
+
+  // Analyze image with AI when a new image is picked
+  useEffect(() => {
+    if (photoBase64) {
+      analyzeImageWithAI();
+    }
+  }, [photoBase64]);
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -48,8 +61,51 @@ export default function UploadItemScreen() {
     }
   };
 
+  const analyzeImageWithAI = async () => {
+    if (!photoBase64) return;
+
+    setAnalyzing(true);
+    try {
+      // Call Firebase Cloud Function to analyze image
+      const response = await fetch(
+        "https://us-central1-YOUR_PROJECT_ID.cloudfunctions.net/analyzeImage",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image: photoBase64 }),
+        }
+      );
+      const data = await response.json();
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      // Update fields with AI predictions (user can still edit)
+      setItemName(data.itemName || "");
+      setCategory(data.category || "");
+      setColor(data.color || "");
+      setBrandName(data.brandName || "");
+    } catch (error) {
+      console.error("Error analyzing image:", error);
+      Alert.alert(
+        "AI Analysis Failed",
+        "Could not auto-fill fields. Please enter manually."
+      );
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
   const uploadItem = async () => {
-    if (!itemName || !location || !category || !photoBase64) {
+    if (
+      !itemName ||
+      !location ||
+      !category ||
+      !color ||
+      !brandName ||
+      !photoBase64
+    ) {
       Alert.alert(
         "Missing Information",
         "Please fill all fields and select a photo."
@@ -65,6 +121,9 @@ export default function UploadItemScreen() {
         itemName,
         location,
         category,
+        brandName,
+        color,
+        dateFound: dateFound.toISOString(), // Store as ISO string
         photoBase64,
         status: "pending",
         timestamp: serverTimestamp(),
@@ -108,6 +167,12 @@ export default function UploadItemScreen() {
           <Text style={styles.imageText}>Click to select a picture</Text>
         )}
       </TouchableOpacity>
+      {analyzing && (
+        <View style={styles.analyzingContainer}>
+          <ActivityIndicator size="small" color="#4F46E5" />
+          <Text style={styles.analyzingText}>Analyzing image...</Text>
+        </View>
+      )}
 
       <TextInput
         placeholder="Item Name"
@@ -126,6 +191,36 @@ export default function UploadItemScreen() {
         value={category}
         onChangeText={setCategory}
         style={styles.input}
+      />
+      <TextInput
+        placeholder="Brand Name"
+        value={brandName}
+        onChangeText={setBrandName}
+        style={styles.input}
+      />
+      <TextInput
+        placeholder="Color"
+        value={color}
+        onChangeText={setColor}
+        style={styles.input}
+      />
+      <TouchableOpacity
+        style={styles.datePickerButton}
+        onPress={() => setDatePickerOpen(true)}
+      >
+        <Text style={styles.datePickerText}>
+          Date Found: {dateFound.toLocaleDateString()}
+        </Text>
+      </TouchableOpacity>
+      <DatePicker
+        modal
+        open={datePickerOpen}
+        date={dateFound}
+        onConfirm={(date) => {
+          setDatePickerOpen(false);
+          setDateFound(date);
+        }}
+        onCancel={() => setDatePickerOpen(false)}
       />
 
       <Button
@@ -149,12 +244,12 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   backButton: {
-    marginRight: 15, // Space between button and heading
+    marginRight: 15,
   },
   heading: {
     fontSize: 22,
     fontWeight: "bold",
-    color: "#333", // Slightly darker for contrast
+    color: "#333",
   },
   input: {
     borderWidth: 1,
@@ -179,5 +274,25 @@ const styles = StyleSheet.create({
   },
   imageText: {
     color: "#888",
+  },
+  analyzingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 15,
+  },
+  analyzingText: {
+    marginLeft: 10,
+    color: "#333",
+  },
+  datePickerButton: {
+    borderWidth: 1,
+    borderColor: "#aaa",
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 15,
+  },
+  datePickerText: {
+    fontSize: 16,
+    color: "#333",
   },
 });
