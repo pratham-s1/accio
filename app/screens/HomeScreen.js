@@ -25,7 +25,7 @@ export default function HomeScreen() {
     const fetchItems = async () => {
       try {
         const data = await getAllLostItems();
-        console.log("Fetched approved items:", data);
+        //console.log("Fetched approved items:", data);
         setItems(data);
       } catch (error) {
         console.error("Error in fetchItems:", error);

@@ -1,4 +1,4 @@
-// firebase.js
+
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import {
@@ -17,7 +17,8 @@ const firebaseConfig = {
   apiKey: "AIzaSyCwCNM5smpHWsiSTzVnBdYJHay8fVvZDMA",
   authDomain: "accio-9f067.firebaseapp.com",
   projectId: "accio-9f067",
-  storageBucket: "accio-9f067.firebasestorage.app",
+  //storageBucket: "accio-9f067.firebasestorage.app",
+  storageBucket: "accio-9f067.appspot.com",
   messagingSenderId: "508663145969",
   appId: "1:508663145969:web:ec7855d2dad4c34a861050",
   measurementId: "G-VNXS5HVNGK",
@@ -35,7 +36,7 @@ export const getAllLostItems = async () => {
       id: doc.id,
       ...doc.data(),
     }));
-    console.log("Raw query result:", items); // Debug here too
+    //console.log("Raw query result:", items); // Debug here too
     return items;
   } catch (error) {
     console.error("Error fetching approved lost items:", error);

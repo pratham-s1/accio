@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -15,7 +15,7 @@ import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db, auth } from "../firebase/firebaseService";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import DatePicker from "react-native-date-picker"; // For date selection
+import Config from "react-native-config";
 
 export default function UploadItemScreen() {
   const router = useRouter();
@@ -24,18 +24,12 @@ export default function UploadItemScreen() {
   const [category, setCategory] = useState("");
   const [brandName, setBrandName] = useState("");
   const [color, setColor] = useState("");
-  const [dateFound, setDateFound] = useState(new Date()); // Default to today
+  const [dateFound, setDateFound] = useState("");
   const [photoBase64, setPhotoBase64] = useState("");
   const [uploading, setUploading] = useState(false);
-  const [analyzing, setAnalyzing] = useState(false); // For AI analysis
-  const [datePickerOpen, setDatePickerOpen] = useState(false); // Control date picker visibility
+  const [analyzing, setAnalyzing] = useState(false);
 
-  // Analyze image with AI when a new image is picked
-  useEffect(() => {
-    if (photoBase64) {
-      analyzeImageWithAI();
-    }
-  }, [photoBase64]);
+  const GEMINI_API_KEY = "AIzaSyA8H0AAddbrJRYo-Oho1dbHrxVGrIY_DUY";
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -51,50 +45,85 @@ export default function UploadItemScreen() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
-      quality: 0.5,
+      quality: 0.3, // Reduced from 0.5 to keep base64 size low
       base64: true,
     });
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
       const base64String = result.assets[0].base64;
+      // Check base64 size (Firestore limit: ~1MB)
+      const base64SizeMB = (base64String.length * 3) / 4 / 1024 / 1024;
+      if (base64SizeMB > 0.8) {
+        Alert.alert(
+          "Image Too Large",
+          "Please select a smaller image (max ~800KB)."
+        );
+        return;
+      }
       setPhotoBase64(base64String);
+      analyzeImageWithGemini(base64String);
     }
   };
 
-  const analyzeImageWithAI = async () => {
-    if (!photoBase64) return;
+  const analyzeImageWithGemini = async (base64String) => {
+    if (!base64String) return;
 
     setAnalyzing(true);
     try {
-      // Call Firebase Cloud Function to analyze image
       const response = await fetch(
-        "https://us-central1-YOUR_PROJECT_ID.cloudfunctions.net/analyzeImage",
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${GEMINI_API_KEY}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ image: photoBase64 }),
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: `Analyze this image of a lost item and return JSON with predicted fields: itemName, category, color, brandName. Example: {"itemName": "Wallet", "category": "Accessories", "color": "Black", "brandName": "Gucci"}`,
+                  },
+                  {
+                    inlineData: {
+                      mimeType: "image/jpeg",
+                      data: base64String,
+                    },
+                  },
+                ],
+              },
+            ],
+          }),
         }
       );
-      const data = await response.json();
 
+      const data = await response.json();
       if (data.error) {
-        throw new Error(data.error);
+        throw new Error(data.error.message);
       }
 
-      // Update fields with AI predictions (user can still edit)
-      setItemName(data.itemName || "");
-      setCategory(data.category || "");
-      setColor(data.color || "");
-      setBrandName(data.brandName || "");
+      const responseText = data.candidates[0].content.parts[0].text;
+      const cleanedText = responseText.replace(/```json\n|\n```/g, "").trim();
+      const predictedFields = JSON.parse(cleanedText);
+
+      setItemName(predictedFields.itemName || "");
+      setCategory(predictedFields.category || "");
+      setColor(predictedFields.color || "");
+      setBrandName(predictedFields.brandName || "");
     } catch (error) {
       console.error("Error analyzing image:", error);
       Alert.alert(
         "AI Analysis Failed",
-        "Could not auto-fill fields. Please enter manually."
+        "Could not auto-fill fields. Please enter details manually."
       );
     } finally {
       setAnalyzing(false);
     }
+  };
+
+  const validateDate = (dateString) => {
+    const regex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!regex.test(dateString)) return false;
+    const date = new Date(dateString);
+    return date instanceof Date && !isNaN(date);
   };
 
   const uploadItem = async () => {
@@ -104,6 +133,7 @@ export default function UploadItemScreen() {
       !category ||
       !color ||
       !brandName ||
+      !dateFound ||
       !photoBase64
     ) {
       Alert.alert(
@@ -113,9 +143,23 @@ export default function UploadItemScreen() {
       return;
     }
 
+    if (!validateDate(dateFound)) {
+      Alert.alert(
+        "Invalid Date",
+        "Please enter a valid date in YYYY-MM-DD format (e.g., 2025-04-21)."
+      );
+      return;
+    }
+
+    if (!auth.currentUser) {
+      Alert.alert("Error", "You must be logged in to upload an item.");
+      return;
+    }
+
     setUploading(true);
 
     try {
+      console.log("Uploading item for user:", auth.currentUser.uid);
       await addDoc(collection(db, "items"), {
         userId: auth.currentUser.uid,
         itemName,
@@ -123,7 +167,7 @@ export default function UploadItemScreen() {
         category,
         brandName,
         color,
-        dateFound: dateFound.toISOString(), // Store as ISO string
+        dateFound,
         photoBase64,
         status: "pending",
         timestamp: serverTimestamp(),
@@ -139,7 +183,10 @@ export default function UploadItemScreen() {
           "Image size exceeds Firestore limit. Try a smaller image."
         );
       } else {
-        Alert.alert("Error", "Something went wrong during upload.");
+        Alert.alert(
+          "Error",
+          "Something went wrong during upload: " + error.message
+        );
       }
     } finally {
       setUploading(false);
@@ -204,29 +251,18 @@ export default function UploadItemScreen() {
         onChangeText={setColor}
         style={styles.input}
       />
-      <TouchableOpacity
-        style={styles.datePickerButton}
-        onPress={() => setDatePickerOpen(true)}
-      >
-        <Text style={styles.datePickerText}>
-          Date Found: {dateFound.toLocaleDateString()}
-        </Text>
-      </TouchableOpacity>
-      <DatePicker
-        modal
-        open={datePickerOpen}
-        date={dateFound}
-        onConfirm={(date) => {
-          setDatePickerOpen(false);
-          setDateFound(date);
-        }}
-        onCancel={() => setDatePickerOpen(false)}
+      <TextInput
+        placeholder="Date Found (YYYY-MM-DD)"
+        value={dateFound}
+        onChangeText={setDateFound}
+        style={styles.input}
+        keyboardType="numeric"
       />
 
       <Button
         title={uploading ? "Uploading..." : "Submit"}
         onPress={uploadItem}
-        disabled={uploading}
+        disabled={uploading || analyzing}
       />
     </View>
   );
@@ -282,17 +318,6 @@ const styles = StyleSheet.create({
   },
   analyzingText: {
     marginLeft: 10,
-    color: "#333",
-  },
-  datePickerButton: {
-    borderWidth: 1,
-    borderColor: "#aaa",
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 15,
-  },
-  datePickerText: {
-    fontSize: 16,
     color: "#333",
   },
 });
