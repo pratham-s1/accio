@@ -88,7 +88,7 @@ export default function HomeScreen() {
           <Text style={styles.cardText}>Auction</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.card}
+          style={[styles.card, { width: "100%" }]}
           onPress={() => router.replace("/screens/FindItemScreen")}
         >
           <Text style={styles.cardText}>Find Item</Text>
