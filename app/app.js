@@ -11,6 +11,7 @@ import AuctionScreen from "./screens/AuctionScreen";
 import ProfileScreen from "./screens/ProfileScreen";
 import AdminLogin from "./screens/AdminLogin";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import FindItemScreen from "./screens/FindItemScreen";
 
 const Stack = createStackNavigator();
 
@@ -28,6 +29,7 @@ function app() {
           <Stack.Screen name="Auction" component={AuctionScreen} />
           <Stack.Screen name="AdminLogin" component={AdminLogin} />
           <Stack.Screen name="Profile" component={ProfileScreen} />
+          <Stack.Screen name="FindItem" component={FindItemScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </ThemeProvider>

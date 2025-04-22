@@ -170,6 +170,8 @@ export default function UploadItemScreen() {
         dateFound,
         photoBase64,
         status: "pending",
+        userClaim: "false",
+
         timestamp: serverTimestamp(),
       });
 
