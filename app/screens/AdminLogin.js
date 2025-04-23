@@ -1,4 +1,3 @@
-// screens/AdminLoginScreen.js
 import React, { useState } from "react";
 import {
   View,
@@ -7,8 +6,10 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  SafeAreaView,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 
 const AdminLoginScreen = () => {
   const router = useRouter();
@@ -26,47 +27,80 @@ const AdminLoginScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Admin Login</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        {/* Header with Back Button */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.replace("/")} // Navigate to LoginScreen.js
+            style={styles.backButton}
+          >
+            <Ionicons name="chevron-back" size={28} color="#007AFF" />
+          </TouchableOpacity>
+          <Text style={styles.title}>Admin Login</Text>
+          {/* Empty View to balance the header */}
+          <View style={styles.placeholder} />
+        </View>
 
-      <TextInput
-        placeholder="Admin Email"
-        style={styles.input}
-        autoCapitalize="none"
-        keyboardType="email-address"
-        onChangeText={(text) => setEmail(text)}
-        value={email}
-      />
-      <TextInput
-        placeholder="Password"
-        style={styles.input}
-        secureTextEntry
-        onChangeText={(text) => setPassword(text)}
-        value={password}
-      />
+        {/* Input Fields and Button */}
+        <TextInput
+          placeholder="Admin Email"
+          style={styles.input}
+          autoCapitalize="none"
+          keyboardType="email-address"
+          onChangeText={(text) => setEmail(text)}
+          value={email}
+        />
+        <TextInput
+          placeholder="Password"
+          style={styles.input}
+          secureTextEntry
+          onChangeText={(text) => setPassword(text)}
+          value={password}
+        />
 
-      <TouchableOpacity style={styles.button} onPress={handleAdminLogin}>
-        <Text style={styles.buttonText}>Login as Admin</Text>
-      </TouchableOpacity>
-    </View>
+        <TouchableOpacity style={styles.button} onPress={handleAdminLogin}>
+          <Text style={styles.buttonText}>Login as Admin</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 };
 
 export default AdminLoginScreen;
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: "#f5f6fa",
+  },
+  container: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 20,
   },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+    marginBottom: 40,
+    paddingHorizontal: 10,
+  },
+  backButton: {
+    padding: 8,
+    marginRight: 10,
+  },
   title: {
+    flex: 1,
+    textAlign: "center",
     fontSize: 26,
     fontWeight: "bold",
-    marginBottom: 40,
     color: "#2f3542",
+  },
+  placeholder: {
+    width: 40, // Matches backButton width for balance
   },
   input: {
     width: "100%",

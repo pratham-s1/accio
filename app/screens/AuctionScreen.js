@@ -53,7 +53,7 @@ export default function AuctionScreen() {
         const items = snapshot.docs
           .map((doc) => {
             const data = doc.data();
-            console.log("Document data:", JSON.stringify(data, null, 2));
+            // console.log("Document data:", JSON.stringify(data, null, 2));
             return { id: doc.id, ...data };
           })
           .filter((item) => {

@@ -9,8 +9,8 @@ export default function Index() {
       <Text style={styles.welcomeText}>Welcome to</Text>
       <Image
         //source={require("/Users/prathamsingh/accio/app/assets/images/PHOTO-2025-04-04-14-47-39.jpg")}
-        //source={require("/Users/prathamsingh/accio/app/WhatsApp Image 2025-04-04 at 14.47.39.jpeg")}
-        source={require("/Users/sakshiarjun/Desktop/accio/app/WhatsApp Image 2025-04-04 at 14.47.39.jpeg")}
+        source={require("/Users/prathamsingh/accio/app/WhatsApp Image 2025-04-04 at 14.47.39.jpeg")}
+        //source={require("/Users/sakshiarjun/Desktop/accio/app/WhatsApp Image 2025-04-04 at 14.47.39.jpeg")}
         style={styles.welcomeImage}
       />
       <Button

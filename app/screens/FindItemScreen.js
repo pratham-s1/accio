@@ -14,7 +14,14 @@ import {
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { db, auth } from "../firebase/firebaseService";
-import { collection, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  doc,
+  updateDoc,
+} from "firebase/firestore";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -41,6 +48,9 @@ export default function FindItemScreen() {
     { label: "Beverages", value: "Beverages" },
     { label: "Shoes", value: "Shoes" },
     { label: "Stationery", value: "Stationery" },
+    { label: "Food", value: "Food" },
+    { label: "Books", value: "Books" },
+    { label: "Sports Equipment", value: "Sports Equipment" },
     { label: "Other", value: "Other" },
   ];
 
@@ -71,9 +81,7 @@ export default function FindItemScreen() {
       Alert.alert("Error", "Please select at least one filter to search.");
       return;
     }
-    console.log(
-      itemType, color, location
-    )
+    console.log(itemType, color, location);
     setLoading(true);
     setSelectedItemId(null);
     try {
@@ -125,12 +133,16 @@ export default function FindItemScreen() {
         claimedBy: auth.currentUser.uid,
         claimTimestamp: new Date().toISOString(),
       });
-      Alert.alert("Success", "To claim this item, visit the security section.", [
-        {
-          text: "OK",
-          onPress: () => router.replace("/screens/HomeScreen"),
-        },
-      ]);
+      Alert.alert(
+        "Success",
+        "To claim this item, visit the security section.",
+        [
+          {
+            text: "OK",
+            onPress: () => router.replace("/screens/HomeScreen"),
+          },
+        ]
+      );
     } catch (error) {
       console.error("Claim error:", error);
       Alert.alert("Error", "Failed to claim item: " + error.message);
@@ -160,7 +172,10 @@ export default function FindItemScreen() {
     );
   };
 
-  console.log("Rendering FindItemScreen, searchResults length:", searchResults.length);
+  console.log(
+    "Rendering FindItemScreen, searchResults length:",
+    searchResults.length
+  );
   console.log("Rendering Claim button:", searchResults.length > 0);
 
   return (
@@ -244,7 +259,11 @@ export default function FindItemScreen() {
         </View>
 
         {loading ? (
-          <ActivityIndicator size="large" color="#4F46E5" style={styles.loader} />
+          <ActivityIndicator
+            size="large"
+            color="#4F46E5"
+            style={styles.loader}
+          />
         ) : searchResults.length > 0 ? (
           <View style={styles.resultsContainer}>
             <FlatList
