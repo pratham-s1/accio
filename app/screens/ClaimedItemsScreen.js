@@ -8,10 +8,11 @@ import {
   ActivityIndicator,
   Alert,
   SafeAreaView,
+  Image,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { db } from "../firebase/firebaseService";
-import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import { Ionicons } from "@expo/vector-icons";
 
 const ClaimedItemsScreen = () => {
@@ -28,39 +29,23 @@ const ClaimedItemsScreen = () => {
           where("approveClaim", "==", true)
         );
         const snapshot = await getDocs(q);
-        console.log("Approved claimed items snapshot size:", snapshot.size);
+        //console.log("Approved claimed items snapshot size:", snapshot.size);
 
-        const items = await Promise.all(
-          snapshot.docs.map(async (doc) => {
-            const itemData = { id: doc.id, ...doc.data() };
+        const items = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            itemName: data.itemName || "N/A",
+            category: data.category || "N/A",
+            brandName: data.brandName || "N/A",
+            photoBase64: data.photoBase64 || null,
+            /*claimTimestamp: data.claimTimestamp
+              ? data.claimTimestamp.toDate().toLocaleDateString()
+              : "N/A",*/
+          };
+        });
 
-            // Fetch claimedBy email
-            let claimedByEmail = "N/A";
-            if (itemData.claimedBy) {
-              const userDoc = await getDoc(doc(db, "users", itemData.claimedBy));
-              if (userDoc.exists()) {
-                claimedByEmail = userDoc.data().email || "N/A";
-              }
-            }
-
-            // Fetch postedBy email (userId is the uploader)
-            let postedByEmail = "N/A";
-            if (itemData.userId) {
-              const userDoc = await getDoc(doc(db, "users", itemData.userId));
-              if (userDoc.exists()) {
-                postedByEmail = userDoc.data().email || "N/A";
-              }
-            }
-
-            return {
-              ...itemData,
-              claimedByEmail,
-              postedByEmail,
-            };
-          })
-        );
-
-        console.log("Approved claimed items:", items);
+        //console.log("Approved claimed items:", items);
         setClaimedItems(items);
       } catch (error) {
         console.error("Error fetching approved claimed items:", error);
@@ -73,27 +58,21 @@ const ClaimedItemsScreen = () => {
     fetchApprovedClaimedItems();
   }, []);
 
-  const renderItem = ({ item }) => (
-    <View style={styles.card}>
-      <Text style={styles.itemName}>{item.itemName || "N/A"}</Text>
-      <View style={styles.section}>
-        <Text style={styles.label}>Claimed By:</Text>
-        <Text style={styles.value}>
-          {item.claimedBy || "N/A"} ({item.claimedByEmail})
-        </Text>
+  const renderItem = ({ item }) => {
+    const photoURI = item.photoBase64
+      ? `data:image/jpeg;base64,${item.photoBase64}`
+      : "https://via.placeholder.com/150";
+
+    return (
+      <View style={styles.card}>
+        <Image source={{ uri: photoURI }} style={styles.image} />
+        <Text style={styles.itemName}>{item.itemName}</Text>
+        <Text style={styles.detail}>Category: {item.category}</Text>
+        <Text style={styles.detail}>Brand: {item.brandName}</Text>
+        <Text style={styles.timestamp}>Claim Date: {item.claimTimestamp}</Text>
       </View>
-      <View style={styles.section}>
-        <Text style={styles.label}>Posted By:</Text>
-        <Text style={styles.value}>
-          {item.userId || "N/A"} ({item.postedByEmail})
-        </Text>
-      </View>
-      <Text style={styles.date}>Claim Date: {item.claimTimestamp || "N/A"}</Text>
-      <Text style={styles.date}>Color: {item.color || "N/A"}</Text>
-      <Text style={styles.date}>Location: {item.location || "N/A"}</Text>
-      <Text style={styles.date}>Category: {item.category || "N/A"}</Text>
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -159,27 +138,29 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 2,
   },
+  image: {
+    width: "100%",
+    height: 150,
+    borderRadius: 8,
+    marginBottom: 10,
+    resizeMode: "cover",
+  },
   itemName: {
     fontSize: 18,
     fontWeight: "600",
     marginBottom: 8,
     color: "#2c3e50",
   },
-  section: {
-    marginBottom: 6,
-  },
-  label: {
-    fontWeight: "bold",
-    color: "#555",
-  },
-  value: {
-    marginLeft: 5,
+  detail: {
+    fontSize: 16,
     color: "#333",
+    marginBottom: 4,
   },
-  date: {
-    marginTop: 6,
-    fontStyle: "italic",
+  timestamp: {
+    fontSize: 14,
     color: "#777",
+    marginTop: 4,
+    fontStyle: "italic",
   },
   listContent: {
     paddingBottom: 20,

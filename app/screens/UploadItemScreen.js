@@ -9,13 +9,14 @@ import {
   Alert,
   StyleSheet,
   ActivityIndicator,
+  ScrollView, // Added ScrollView import
+  SafeAreaView, // Added SafeAreaView for better layout
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db, auth } from "../firebase/firebaseService";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import Config from "react-native-config";
 
 export default function UploadItemScreen() {
   const router = useRouter();
@@ -45,13 +46,12 @@ export default function UploadItemScreen() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
-      quality: 0.3, // Reduced from 0.5 to keep base64 size low
+      quality: 0.3,
       base64: true,
     });
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
       const base64String = result.assets[0].base64;
-      // Check base64 size (Firestore limit: ~1MB)
       const base64SizeMB = (base64String.length * 3) / 4 / 1024 / 1024;
       if (base64SizeMB > 0.8) {
         Alert.alert(
@@ -80,7 +80,10 @@ export default function UploadItemScreen() {
               {
                 parts: [
                   {
-                    text: `Analyze this image of a lost item and return JSON with predicted fields: itemName, category, color, brandName. Example: {"itemName": "Wallet", "category": "Accessories", "color": "Black", "brandName": "Gucci"}`,
+                    text: `Analyze this image of a lost item and return JSON with predicted fields: itemName, category, color, brandName.
+                    category should be one of the following: Electronics, Clothing, Accessories, Books, Stationery, Sports Equipment, Other.
+                    color should be one of the following: Red, Blue, Green, Yellow, Black, White, Brown, Purple, Pink, Orange, Other. 
+                    Example: {"itemName": "Wallet", "category": "Accessories", "color": "Black", "brandName": "Gucci"}`,
                   },
                   {
                     inlineData: {
@@ -170,8 +173,12 @@ export default function UploadItemScreen() {
         dateFound,
         photoBase64,
         status: "pending",
-        userClaim: "false",
-
+        userClaim: false,
+        approveClaim: false,
+        isAuctionActive: false,
+        auctionBasePrice: 10,
+        currentBid: 11,
+        currentBidderName: "",
         timestamp: serverTimestamp(),
       });
 
@@ -198,83 +205,101 @@ export default function UploadItemScreen() {
   const photoURI = photoBase64 ? `data:image/jpeg;base64,${photoBase64}` : null;
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.replace("/screens/HomeScreen")}
-          style={styles.backButton}
-        >
-          <Ionicons name="arrow-back" size={28} color="#4F46E5" />
-        </TouchableOpacity>
-        <Text style={styles.heading}>Upload Lost Item</Text>
-      </View>
-
-      <TouchableOpacity style={styles.imagePicker} onPress={pickImage}>
-        {photoURI ? (
-          <Image source={{ uri: photoURI }} style={styles.imagePreview} />
-        ) : (
-          <Text style={styles.imageText}>Click to select a picture</Text>
-        )}
-      </TouchableOpacity>
-      {analyzing && (
-        <View style={styles.analyzingContainer}>
-          <ActivityIndicator size="small" color="#4F46E5" />
-          <Text style={styles.analyzingText}>Analyzing image...</Text>
+    <SafeAreaView style={styles.container}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.replace("/screens/HomeScreen")}
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={28} color="#4F46E5" />
+          </TouchableOpacity>
+          <Text style={styles.heading}>Upload Lost Item</Text>
         </View>
-      )}
 
-      <TextInput
-        placeholder="Item Name"
-        value={itemName}
-        onChangeText={setItemName}
-        style={styles.input}
-      />
-      <TextInput
-        placeholder="Location Found"
-        value={location}
-        onChangeText={setLocation}
-        style={styles.input}
-      />
-      <TextInput
-        placeholder="Category"
-        value={category}
-        onChangeText={setCategory}
-        style={styles.input}
-      />
-      <TextInput
-        placeholder="Brand Name"
-        value={brandName}
-        onChangeText={setBrandName}
-        style={styles.input}
-      />
-      <TextInput
-        placeholder="Color"
-        value={color}
-        onChangeText={setColor}
-        style={styles.input}
-      />
-      <TextInput
-        placeholder="Date Found (YYYY-MM-DD)"
-        value={dateFound}
-        onChangeText={setDateFound}
-        style={styles.input}
-        keyboardType="numeric"
-      />
+        <TouchableOpacity style={styles.imagePicker} onPress={pickImage}>
+          {photoURI ? (
+            <Image source={{ uri: photoURI }} style={styles.imagePreview} />
+          ) : (
+            <Text style={styles.imageText}>Click to select a picture</Text>
+          )}
+        </TouchableOpacity>
+        {analyzing && (
+          <View style={styles.analyzingContainer}>
+            <ActivityIndicator size="small" color="#4F46E5" />
+            <Text style={styles.analyzingText}>Analyzing image...</Text>
+          </View>
+        )}
 
-      <Button
-        title={uploading ? "Uploading..." : "Submit"}
-        onPress={uploadItem}
-        disabled={uploading || analyzing}
-      />
-    </View>
+        <TextInput
+          placeholder="Item Name"
+          value={itemName}
+          onChangeText={setItemName}
+          style={styles.input}
+          placeholderTextColor="#888"
+        />
+        <TextInput
+          placeholder="Location Found"
+          value={location}
+          onChangeText={setLocation}
+          style={styles.input}
+          placeholderTextColor="#888"
+        />
+        <TextInput
+          placeholder="Category"
+          value={category}
+          onChangeText={setCategory}
+          style={styles.input}
+          placeholderTextColor="#888"
+        />
+        <TextInput
+          placeholder="Brand Name"
+          value={brandName}
+          onChangeText={setBrandName}
+          style={styles.input}
+          placeholderTextColor="#888"
+        />
+        <TextInput
+          placeholder="Color"
+          value={color}
+          onChangeText={setColor}
+          style={styles.input}
+          placeholderTextColor="#888"
+        />
+        <TextInput
+          placeholder="Date Found (YYYY-MM-DD)"
+          value={dateFound}
+          onChangeText={setDateFound}
+          style={styles.input}
+          placeholderTextColor="#888"
+          // Removed keyboardType="numeric" to allow string input
+        />
+
+        <Button
+          title={uploading ? "Uploading..." : "Submit"}
+          onPress={uploadItem}
+          disabled={uploading || analyzing}
+        />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
     flex: 1,
     backgroundColor: "#fff",
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 40, // Extra padding for scrollable content
   },
   header: {
     flexDirection: "row",
@@ -295,6 +320,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 10,
     marginBottom: 15,
+    color: "#000",
+    fontSize: 16,
   },
   imagePicker: {
     alignItems: "center",

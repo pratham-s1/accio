@@ -19,8 +19,12 @@ import {
   where,
   onSnapshot,
   Timestamp,
+  doc,
+  updateDoc,
+  getDoc,
+  runTransaction,
 } from "firebase/firestore";
-import { db, auth } from "../firebase/firebaseService";
+import { db } from "../firebase/firebaseService";
 
 export default function AuctionScreen() {
   const router = useRouter();
@@ -33,53 +37,28 @@ export default function AuctionScreen() {
     const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
     const threeDaysAgoTimestamp = Timestamp.fromDate(threeDaysAgo);
 
-    // Log readable date
     console.log(
       "Querying items on or before:",
       threeDaysAgoTimestamp.toDate().toISOString()
     );
 
-    // Query items: approved and auction active
+    // Query items: approved, auction active, and within 3 days
     const itemsQuery = query(
       collection(db, "items"),
       where("status", "==", "approved"),
-      where("isAuctionActive", "==", true)
+      where("isAuctionActive", "==", true),
+      //where("timestamp", "<=", threeDaysAgoTimestamp)
     );
 
     // Real-time listener
     const unsubscribe = onSnapshot(
       itemsQuery,
       (snapshot) => {
-        const items = snapshot.docs
-          .map((doc) => {
-            const data = doc.data();
-            // console.log("Document data:", JSON.stringify(data, null, 2));
-            return { id: doc.id, ...data };
-          })
-          .filter((item) => {
-            let itemDate;
-            if (typeof item.timestamp === "string") {
-              itemDate = new Date(item.timestamp);
-            } else if (
-              item.timestamp &&
-              typeof item.timestamp.toDate === "function"
-            ) {
-              itemDate = item.timestamp.toDate();
-            } else {
-              console.log(
-                `Item ${item.id} has invalid timestamp:`,
-                item.timestamp
-              );
-              return false;
-            }
-            const isBeforeOrOnThreeDaysAgo =
-              itemDate <= threeDaysAgoTimestamp.toDate();
-            console.log(
-              `Item ${item.id} timestamp ${item.timestamp} is before or on 3 days ago: ${isBeforeOrOnThreeDaysAgo}, isAuctionActive: ${item.isAuctionActive}`
-            );
-            return isBeforeOrOnThreeDaysAgo;
-          });
-        console.log("Fetched auction items:", JSON.stringify(items, null, 2));
+        const items = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        //console.log("Fetched auction items:", items);
         setAuctionItems(items);
         setLoading(false);
       },
@@ -95,8 +74,8 @@ export default function AuctionScreen() {
 
   const placeBid = async (itemId, item) => {
     const bidAmount = parseFloat(bids[itemId] || "0");
-    if (!bidAmount || isNaN(bidAmount)) {
-      Alert.alert("Invalid Bid", "Please enter a valid bid amount.");
+    if (!bidAmount || isNaN(bidAmount) || bidAmount <= 0) {
+      Alert.alert("Invalid Bid", "Please enter a valid positive bid amount.");
       return;
     }
 
@@ -107,59 +86,39 @@ export default function AuctionScreen() {
     }
 
     try {
-      const user = auth.currentUser;
-      if (!user) {
-        Alert.alert("Error", "You must be logged in to bid.");
-        return;
-      }
+      const bidderName = "Anonymous"; // Hardcoded since no authentication
+      const itemRef = doc(db, "items", itemId);
 
-      const bidderName = user.displayName || user.email.split("@")[0];
+      console.log("Placing bid:", { itemId, bidAmount, bidderName });
 
-      const response = await fetch(
-        "https://us-central1-accio-9f067.cloudfunctions.net/placeBid",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            itemId,
-            bidAmount,
-            bidderName,
-            userId: user.uid,
-          }),
+      await runTransaction(db, async (transaction) => {
+        const itemSnap = await transaction.get(itemRef);
+        if (!itemSnap.exists()) {
+          throw new Error("Item no longer exists.");
         }
-      );
+        const itemData = itemSnap.data();
+        //console.log("Item data:", itemData);
 
-      const text = await response.text(); // Log raw response
-      console.log("Raw response:", text);
-      let result;
-      try {
-        result = await response.json(); // Attempt to parse JSON
-      } catch (parseError) {
-        console.error(
-          "JSON Parse error:",
-          parseError.message,
-          "Raw text:",
-          text
-        );
-        Alert.alert(
-          "Error",
-          "Invalid response from server. Check console for details."
-        );
-        return;
-      }
+        if (!itemData.isAuctionActive) {
+          throw new Error("This auction is no longer active.");
+        }
 
-      if (result.error) {
-        throw new Error(result.error);
-      }
+        const currentBid = itemData.currentBid || itemData.auctionBasePrice || 0;
+        if (bidAmount <= currentBid) {
+          throw new Error("Your bid is no longer higher than the current bid.");
+        }
+
+        transaction.update(itemRef, {
+          currentBid: bidAmount,
+          currentBidderName: bidderName,
+        });
+      });
 
       Alert.alert("Success", "Bid placed successfully!");
       setBids((prev) => ({ ...prev, [itemId]: "" })); // Clear input
     } catch (error) {
       console.error("Error placing bid:", error);
-      Alert.alert(
-        "Error",
-        error.message || "Failed to place bid. Check console for details."
-      );
+      Alert.alert("Error", `Failed to place bid: ${error.message}`);
     }
   };
 

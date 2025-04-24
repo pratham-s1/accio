@@ -12,6 +12,35 @@ import { Ionicons, Feather } from "@expo/vector-icons";
 import { getAllLostItems } from "../firebase/firebaseService";
 import { useRouter } from "expo-router";
 
+// Sample announcements data
+const announcements = [
+  {
+    id: "1",
+    title: "New Auction Feature",
+    description: "Bid on lost items! Check out the Auction tab to place bids on unclaimed items before they’re archived.",
+  },
+  {
+    id: "2",
+    title: "Claim Process Update",
+    description: "Approved claims now show claim timestamps. Visit the Claimed Items tab to see when items were claimed.",
+  },
+  {
+    id: "3",
+    title: "Item Submission Reminder",
+    description: "Found an item? Submit it via the Upload Item screen to help reunite it with its owner!",
+  },
+  {
+    id: "4",
+    title: "App Update",
+    description: "Our latest update improves image loading for auction items. Update to version 2.0 for a smoother experience.",
+  },
+  {
+    id: "5",
+    title: "Community Notice",
+    description: "Join our community forum on X to share tips on recovering lost items and winning auctions!",
+  },
+];
+
 export default function HomeScreen() {
   const router = useRouter();
   const [items, setItems] = useState([]);
@@ -95,23 +124,14 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.scrollArea}>
-        <Text style={styles.sectionTitle}>Approved Lost Items</Text>
-        {items.length === 0 ? (
-          <Text style={styles.itemText}>No approved items found.</Text>
-        ) : (
-          items.map((item) => {
-            const imageSource = item.photoBase64
-              ? { uri: `data:image/jpeg;base64,${item.photoBase64}` }
-              : { uri: item.imageUrl || "https://via.placeholder.com/180" };
-            return (
-              <View key={item.id} style={styles.itemCard}>
-                <Image source={imageSource} style={styles.image} />
-                <Text style={styles.itemText}>Location: {item.location}</Text>
-              </View>
-            );
-          })
-        )}
+      <ScrollView style={styles.scrollArea} contentContainerStyle={{ paddingBottom: 20 }}>
+        <Text style={styles.sectionTitle}>Announcements</Text>
+        {announcements.map((announcement) => (
+          <View key={announcement.id} style={styles.announcementCard}>
+            <Text style={styles.announcementTitle}>{announcement.title}</Text>
+            <Text style={styles.announcementDescription}>{announcement.description}</Text>
+          </View>
+        ))}
       </ScrollView>
     </View>
   );
@@ -167,6 +187,28 @@ const getStyles = (isDark) =>
       fontWeight: "700",
       marginBottom: 12,
       color: isDark ? "#F1F5F9" : "#1E293B",
+    },
+    announcementCard: {
+      backgroundColor: isDark ? "#1E293B" : "#E0E7FF",
+      padding: 15,
+      marginBottom: 12,
+      borderRadius: 10,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 3,
+      elevation: 2,
+    },
+    announcementTitle: {
+      fontSize: 18,
+      fontWeight: "600",
+      color: isDark ? "#38BDF8" : "#4F46E5",
+      marginBottom: 8,
+    },
+    announcementDescription: {
+      fontSize: 16,
+      color: isDark ? "#F1F5F9" : "#1E293B",
+      lineHeight: 22,
     },
     itemCard: {
       marginBottom: 16,
